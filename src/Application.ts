@@ -26,7 +26,7 @@ export class Application {
             this.db.collection("scores").findOne({ _id: new ObjectId(body.id) }).catch(err => {
                 console.error(err);
             }).then(scores => {
-                res.json(scores);
+                res.json(scores?.scores);
             })
         });
 
