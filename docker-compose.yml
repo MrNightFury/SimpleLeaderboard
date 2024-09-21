@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  server:
+    build: .
+    ports:
+    - 43202:80
+
+  db:
+    build: ./db
+    volumes:
+      - data:/data/db
+    entrypoint: ["mongod", "--config", "/etc/mongo/mongo.conf", "--bind_ip", "localhost,db"]
+
+volumes:
+  data:
