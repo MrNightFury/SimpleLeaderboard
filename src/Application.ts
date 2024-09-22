@@ -46,9 +46,7 @@ export class Application {
             if (!score || score < body.score) {
                 this.db.collection("scores").updateOne({ _id: new ObjectId(body.id) }, {
                     $set: {
-                        scores: {
-                            [body.username]: body.score
-                        }
+                        [`scores.${body.username}`]: body.score
                     }
                 });
                 res.status(200).send("OK");
