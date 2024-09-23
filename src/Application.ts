@@ -14,6 +14,16 @@ export class Application {
         this.db = db.db("scores");
     }
 
+    checkId(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+        try {
+            req.body.id = new ObjectId(req.params.id);
+        } catch (e) {
+            res.status(400).json({ error: "Incorrect id" })
+            return;
+        }
+        next();
+    }
+
     setupRoutes() {
         let app = this.app;
         app.use(bodyParser.json());
@@ -27,8 +37,8 @@ export class Application {
             })
         })
 
-        app.get("/:id", (req, res) => {
-            this.db.collection("scores").findOne({ _id: new ObjectId(req.params.id) }).catch(err => {
+        app.get("/:id", this.checkId, (req, res) => {
+            this.db.collection("scores").findOne({ _id: req.body.id }).catch(err => {
                 res.status(500).json({
                     error: err
                 });
@@ -50,8 +60,8 @@ export class Application {
             res.json({ token: result.insertedId });
         })
 
-        app.post("/:id", async (req, res) => {
-            let id = new ObjectId(req.params.id);
+        app.post("/:id", this.checkId, async (req, res) => {
+            let id = req.body.id;
             let body = req.body as PlayerScore;
 
             let game = (await this.db.collection("scores").findOne({
@@ -86,11 +96,9 @@ export class Application {
             res.sendStatus(200);
         });
 
-        app.delete("/:id", (req, res) => {
-            this.db.collection("scores").deleteOne({ _id: new ObjectId(req.params.id) });
+        app.delete("/:id", this.checkId, (req, res) => {
+            this.db.collection("scores").deleteOne({ _id: req.body.id });
         })
-
-        
     }
 
     start() {
