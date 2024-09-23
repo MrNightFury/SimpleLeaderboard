@@ -97,7 +97,11 @@ export class Application {
         });
 
         app.delete("/:id", this.checkId, (req, res) => {
-            this.db.collection("scores").deleteOne({ _id: req.body.id });
+            this.db.collection("scores").deleteOne({ _id: req.body.id }).catch(err => {
+                res.sendStatus(500);
+            }).then(result => {
+                res.sendStatus(200);
+            })
         })
     }
 
