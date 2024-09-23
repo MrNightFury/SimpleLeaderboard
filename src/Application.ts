@@ -44,7 +44,7 @@ export class Application {
                 });
             }).then(scores => {
                 if (scores) {
-                    res.json(scores?.scores);
+                    res.json(req.query.wrapper ? {scores: scores?.scores} : scores?.scores);
                 } else {
                     res.sendStatus(404);
                 }
