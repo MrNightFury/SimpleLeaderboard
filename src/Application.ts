@@ -1,9 +1,9 @@
 import Express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-
-import { AddScoreRequest, GetScoresRequest } from "./API.js";
 import { Db, MongoClient, ObjectId } from "mongodb";
+
+import { Game, PlayerScore } from "./DB.js";
 
 export class Application {
     private app: Express.Application;
@@ -21,44 +21,76 @@ export class Application {
             origin: "*"
         }));
 
-        app.get("/", (req, res) => {
-            let body = req.body as GetScoresRequest;
-            this.db.collection("scores").findOne({ _id: new ObjectId(body.id) }).catch(err => {
-                console.error(err);
+        app.get("/", async (req, res) => {
+            await this.db.collection("scores").find().toArray().then(result => {
+                res.json(result.map(item => ({id: item._id, title: item.title})))
+            })
+        })
+
+        app.get("/:id", (req, res) => {
+            this.db.collection("scores").findOne({ _id: new ObjectId(req.params.id) }).catch(err => {
+                res.status(500).json({
+                    error: err
+                });
             }).then(scores => {
-                res.json(scores?.scores);
+                if (scores) {
+                    res.json(scores?.scores);
+                } else {
+                    res.sendStatus(404);
+                }
             })
         });
 
         app.post("/register", async (req, res) => {
-            let result = await this.db.collection("scores").insertOne({ scores: []});
+            if (!req.body.title) {
+                res.status(400).json({ error: "Title is null" })
+                return;
+            }
+            let result = await this.db.collection("scores").insertOne({ title: req.body.title, scores: []});
             res.json({ token: result.insertedId });
         })
 
-        app.post("/", async (req, res) => {
-            let body = req.body as AddScoreRequest;
+        app.post("/:id", async (req, res) => {
+            let id = new ObjectId(req.params.id);
+            let body = req.body as PlayerScore;
 
-            let result = await this.db.collection("scores").findOne({ _id: new ObjectId(body.id) }).catch(err => {
-                res.status(500).send("Error");
-            });
-            let score = result?.scores[body.username];
-
-            if (!score || score < body.score) {
-                this.db.collection("scores").updateOne({ _id: new ObjectId(body.id) }, {
-                    $set: {
-                        [`scores.${body.username}`]: body.score
-                    }
-                });
-                res.status(200).send("OK");
+            let game = (await this.db.collection("scores").findOne({
+                _id: id
+            })) as Game;
+            if (!game) {
+                res.sendStatus(404);
                 return;
             }
-            res.status(200).send("OK");
+
+            let oldScore = game.scores.find(item => item.username == body.username);
+
+            if (!oldScore) {
+                await this.db.collection("scores").updateOne({ _id: id }, {
+// @ts-ignore
+                    $push: {
+                        scores: {
+                            username: body.username,
+                            score: body.score
+                        }
+                    }
+                })
+            } else if (oldScore.score < body.score) {
+                await this.db.collection("scores").updateOne({
+                    _id: id,
+                    "scores.username": body.username
+                }, {
+                    $set: { "scores.$.score": body.score }
+                })
+            }
+
+            res.sendStatus(200);
         });
 
-        app.delete("/", (req, res) => {
-            let body = req.body as GetScoresRequest;
-            this.db.collection("scores").deleteOne({ _id: new ObjectId(body.id) });
+        app.delete("/:id", (req, res) => {
+            this.db.collection("scores").deleteOne({ _id: new ObjectId(req.params.id) });
         })
+
+        
     }
 
     start() {
