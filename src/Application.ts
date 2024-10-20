@@ -44,7 +44,9 @@ export class Application {
                 });
             }).then(scores => {
                 if (scores) {
-                    res.json(req.query.wrapper ? {scores: scores?.scores} : scores?.scores);
+                    console.log(req.query.sorted);
+                    let result = req.query.sorted ? scores.scores.sort((a: any, b: any) => b.score - a.score) : scores.scores;
+                    res.json(req.query.wrapper ? {scores: result} : result);
                 } else {
                     res.sendStatus(404);
                 }
